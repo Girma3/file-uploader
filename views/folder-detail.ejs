@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%-include("./partials/header",{title:"Folder Detail"})%>
+  </head>
+  <body>
+    <header class="flex-row">
+      <h1>Detail Page</h1>
+      <a href="/upload-page">Back</a>
+    </header>
+    <main>
+      <section>
+        <div class="flex-row folder-header">
+          <div class="flex-row">
+            <h1><%=folder.name%></h1>
+            <p>created at <%=folder.timestamp%></p>
+            <p>files <%=folder.count%></p>
+            <p>size <%=folder.size%></p>
+          </div>
+          <div>
+            <label for="addFile" aria-label="add file" style="display: none;"></label>
+           <input type="file" id="addFile" name="addFile" data-name="upload-file" data-folder="<%=folder.id%>" style="display:none;">
+          </div>
+          <div data-name="folder-btn-holder">
+            <button class="edit-folder" data-name="edit-folder" aria-label="edit folder"></button>
+            <button class="add-file" data-name="add-file" aria-label="Add file"></button>
+            <button class="del-folder" data-name="delete-folder" aria-label="delete folder"></button>
+            <button class="share-folder" data-name="share-folder" aria-label="share folder"></button>
+            <button
+              class="download-folder"
+              data-name="download-folder"
+              aria-label="download folder"
+            ></button>
+          </div>
+        </div>
+        <ul>
+          <% if (folder.files.length > 0) { %> <% folder.files.forEach((file) =>
+          { %> <%- include("./partials/upload-item", { file: file }) %> <% }) %>
+          <% } %>
+        </ul>
+      </section>
+    </main>
+  
+    <script type="module" src="/scripts/detail-page.js"></script>
+  </body>
+</html>
