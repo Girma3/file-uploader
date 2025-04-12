@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%-include("./partials/header",{title:"Upload Files"})%>
+  <body>
+    <header class="flex-row">
+      <h1>Upload Page</h1>
+      <nav>
+        <div class="btn-holder" data-name="upload-btn-holder">
+          <button data-name="new-folder">New Folder</button>
+          <button class="active" data-name="upload-folder">
+            upload Folder
+          </button>
+          <button data-name="upload-file">upload Files</button>
+          <button>Log out</button>
+        </div>
+      </nav>
+    </header>
+    <main>
+      <section>
+        <dialog data-name="folder-modal" class="folder-modal">
+          <%- include("./partials/new-folder-form")%>
+        </dialog>
+      </section>
+      <section>
+        <div draggable="true" id="x">Drag me</div>
+        <div
+          class="flex-column upload-holder"
+          data-name="upload-folder-form-holder"
+        >
+          <p>Drag and Drop</p>
+          <span>or</span>
+          <%- include("./partials/upload-folder-form.ejs") %>
+        </div>
+
+        <div
+          class="flex-column upload-holder"
+          data-name="upload-file-form-holder"
+        >
+          <p>Drag and Drop</p>
+          <span>or</span>
+          <%- include("./partials/upload-file-form.ejs") %>
+        </div>
+        <div id="progress-container" style="width: 100%; background: #ddd">
+          <div
+            id="progress-bar"
+            style="
+              width: 0%;
+              height: 20px;
+              background: #4caf50;
+              text-align: center;
+              color: white;
+            "
+          >
+            0%
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="flex-row">
+          <p>show By</p>
+          <a class="show-link" href="/show/?showBy='folder">Folders</a>
+          <span data-show="file" data></span>
+          <a class="show-link" href="/show/?showBy='file">Files</a>
+        </div>
+      </section>
+      <section>
+        <% if (folders.length > 0) { %> <% folders.forEach((folder) => { %> <%-
+        include("./partials/upload-folder.ejs", { folder: folder }) %> <% }) %>
+        <% } %>
+      </section>
+    </main>
+    <script type="module" src="/scripts/upload-page.js"></script>
+  </body>
+</html>
