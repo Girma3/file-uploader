@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import dpkg from "@prisma/client";
-const { PrismaClient } = dpkg;
+import { PrismaClient } from "./prisma/generated/prisma-client/index.js";
 const prisma = new PrismaClient();
 
 async function getUserById(id) {
@@ -28,6 +27,20 @@ async function getUserByName(userName) {
     console.log(e, "error while getting user by name.");
   }
 }
+//folder operation
+async function addFolder(folderName, userId) {
+  try {
+    const uploadFolder = await prisma.folders.create({
+      data: {
+        name: folderName,
+        userId: userId,
+      },
+    });
+    return uploadFolder;
+  } catch (e) {
+    console.log(e, "err while adding file.");
+  }
+}
 async function getUserAllFolders(userId) {
   try {
     const folders = await prisma.folders.findMany({
@@ -40,19 +53,7 @@ async function getUserAllFolders(userId) {
     console.log(e, "error while getting all folders.");
   }
 }
-async function getUserIndependentFiles(userId) {
-  try {
-    const files = await prisma.files.findMany({
-      where: {
-        userId: userId,
-        folderId: null,
-      },
-    });
-    return files;
-  } catch (e) {
-    console.log(e, "error while getting all files.");
-  }
-}
+
 async function getFolderSize(userId, folderId) {
   if (!userId || !folderId) {
     return null;
@@ -67,7 +68,7 @@ async function getFolderSize(userId, folderId) {
       include: {
         files: {
           select: {
-            size: true,
+            fileSize: true,
           },
         },
       },
@@ -124,96 +125,17 @@ async function getFolderById(userId, folderId) {
     console.log(e, "error while getting folder by id.");
   }
 }
-async function getFolderFiles(userId, folderId) {
-  folderId = Number(folderId);
+async function getFolderByName(folderName, userId) {
   try {
-    const folderFiles = await prisma.files.findMany({
+    const folder = await prisma.folders.findFirst({
       where: {
-        userId: userId,
-        folderId: folderId,
-      },
-    });
-    return folderFiles;
-  } catch (e) {
-    console.log(e, "err while getting folder files.");
-  }
-}
-async function addIndependentFile(filePath, userId) {
-  try {
-    const uploadFile = await prisma.files.create({
-      data: {
-        url: filePath,
-        userId: userId,
-      },
-    });
-    return uploadFile;
-  } catch (e) {
-    console.log(e, "err while adding file.");
-  }
-}
-async function addFolder(folderName, userId) {
-  try {
-    const uploadFolder = await prisma.folders.create({
-      data: {
         name: folderName,
         userId: userId,
       },
     });
-    return uploadFolder;
+    return folder;
   } catch (e) {
-    console.log(e, "err while adding file.");
-  }
-}
-async function addFileToFolder(folderId, userId, name, url) {
-  try {
-    const file = await prisma.files.create({
-      data: {
-        folderId: folderId,
-        userId: userId,
-        name: name,
-        url: url,
-      },
-    });
-    return file;
-  } catch (e) {
-    console.log(e, "err while adding file to folder.");
-  }
-}
-
-async function deleteFolder(userId, folderId) {
-  try {
-    // delete all files in the folder first
-    await prisma.files.deleteMany({
-      where: {
-        userId: userId,
-        folderId: folderId,
-      },
-    });
-
-    // delete the folder itself
-    await prisma.folders.deleteMany({
-      where: {
-        userId: userId,
-        id: folderId,
-      },
-    });
-
-    return true;
-  } catch (e) {
-    console.log(e, "err while deleting folder and its files");
-  }
-}
-async function deleteFile(userId, fileId) {
-  try {
-    await prisma.files.delete({
-      where: {
-        userId: userId,
-        id: fileId,
-      },
-    });
-    return true;
-  } catch (e) {
-    console.log(e, "err while removing file.");
+    console.log(e, "error while getting folder by name.");
   }
 }
 async function editFolderName(userId, folderId, folderName) {
@@ -232,6 +154,189 @@ async function editFolderName(userId, folderId, folderName) {
     console.log(e, "err while editing folder");
   }
 }
+async function deleteFolder(userId, folderId) {
+  try {
+    // delete all files in the folder first
+    await prisma.files.deleteMany({
+      where: {
+        userId: userId,
+        folderId: folderId,
+      },
+    });
+
+    // delete the folder itself
+    await prisma.folders.deleteMany({
+      where: {
+        userId: userId,
+        id: folderId,
+      },
+    });
+    return true;
+  } catch (e) {
+    console.log(e, "err while deleting folder and its files");
+  }
+}
+//file operation
+async function getFolderFiles(userId, folderId) {
+  folderId = Number(folderId);
+  try {
+    const folderFiles = await prisma.files.findMany({
+      where: {
+        userId: userId,
+        folderId: folderId,
+      },
+    });
+    return folderFiles;
+  } catch (e) {
+    console.log(e, "err while getting folder files.");
+  }
+}
+
+async function addIndependentFile(
+  fileOriginalName,
+  fileHashedName,
+  fileType,
+  fileSize,
+  filePath,
+  userId
+) {
+  try {
+    const uploadFile = await prisma.files.create({
+      data: {
+        fileOriginalName: fileOriginalName,
+        fileHashedName: fileHashedName,
+        fileType: fileType,
+        fileSize: fileSize,
+        url: filePath,
+        userId: userId,
+      },
+    });
+    return uploadFile;
+  } catch (e) {
+    console.log(e, "err while adding file.");
+  }
+}
+
+async function getUserIndependentFiles(userId) {
+  try {
+    const files = await prisma.files.findMany({
+      where: {
+        userId: userId,
+        folderId: null,
+      },
+    });
+    return files;
+  } catch (e) {
+    console.log(e, "error while getting all files.");
+  }
+}
+
+async function addFileToFolder(
+  fileOriginalName,
+  fileHashedName,
+  fileType,
+  fileSize,
+  url,
+  folderId,
+  userId
+) {
+  try {
+    const file = await prisma.files.create({
+      data: {
+        fileOriginalName: fileOriginalName,
+        fileHashedName: fileHashedName,
+        fileType: fileType,
+        fileSize: fileSize,
+        url: url,
+        folderId: folderId,
+        userId: userId,
+      },
+    });
+    return file;
+  } catch (e) {
+    console.log(e, "err while adding file to folder.");
+  }
+}
+
+async function deleteFile(userId, fileId) {
+  try {
+    await prisma.files.delete({
+      where: {
+        userId: userId,
+        id: fileId,
+      },
+    });
+    return true;
+  } catch (e) {
+    console.log(e, "err while removing file.");
+  }
+}
+async function getFileByHashedName(fileHashedName, userId) {
+  try {
+    const file = await prisma.files.findFirst({
+      where: {
+        fileHashedName: fileHashedName,
+        userId: userId,
+      },
+    });
+    return file;
+  } catch (e) {
+    console.log(e, "error while getting file by name.");
+  }
+}
+async function getFileById(fileId, userId) {
+  try {
+    const file = await prisma.files.findUnique({
+      where: {
+        id: fileId,
+        userId: userId,
+      },
+    });
+    return file;
+  } catch (e) {
+    console.log(e, "error while getting file by id.");
+  }
+}
+async function saveSharedFolder(
+  folderId,
+  ownerId,
+  linkExpirationTime,
+  shareLink
+) {
+  try {
+    const sharedFolder = await prisma.folders.update({
+      where: {
+        id: folderId,
+      },
+      data: {
+        owner_Id: ownerId,
+        link_expiration: linkExpirationTime,
+        share_link: shareLink,
+        shared: true,
+      },
+    });
+    return sharedFolder;
+  } catch (e) {
+    console.log(e, "error while saving shared folder");
+  }
+}
+async function unShareFolder(folderId) {
+  try {
+    const folder = await prisma.folders.update({
+      where: {
+        id: folderId,
+      },
+      data: {
+        owner_Id: null,
+        link_expiration: null,
+        share_link: null,
+        shared: false,
+      },
+    })
+  } catch (e) {
+    console.log(e, "error while un sharing folder");
+  }
+}
 
 export {
   getUserById,
@@ -239,14 +344,19 @@ export {
   getUserIndependentFiles,
   getUserAllFolders,
   getFolderById,
+  getFolderByName,
   getFolderSize,
+  addFolder,
+  editFolderName,
+  deleteFolder,
   countFolderFiles,
   getFolderFiles,
-  prisma,
-  addFolder,
   addIndependentFile,
   addFileToFolder,
-  deleteFolder,
   deleteFile,
-  editFolderName,
+  getFileByHashedName,
+  getFileById,
+  saveSharedFolder,
+  unShareFolder,
+  prisma,
 };
