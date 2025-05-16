@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { PrismaClient } from "./prisma/generated/prisma-client/index.js";
+import { GoTrueAdminApi } from "@supabase/supabase-js";
 const prisma = new PrismaClient();
 
 async function getUserById(id) {
@@ -309,7 +310,7 @@ async function saveSharedFolder(
         id: folderId,
       },
       data: {
-        owner_Id: ownerId,
+        owner_id: ownerId,
         link_expiration: linkExpirationTime,
         share_link: shareLink,
         shared: true,
@@ -327,17 +328,49 @@ async function unShareFolder(folderId) {
         id: folderId,
       },
       data: {
-        owner_Id: null,
+        owner_id: null,
         link_expiration: null,
         share_link: null,
         shared: false,
       },
-    })
+    });
+    return folder;
   } catch (e) {
     console.log(e, "error while un sharing folder");
   }
 }
-
+async function getPublicFolderByOwnerId(userId, ownerId) {
+  try {
+    const folder = await prisma.folders.findFirst({
+      where: {
+        owner_id: ownerId,
+        shared: true,
+      },
+    });
+    return folder;
+  } catch (e) {
+    console.log(e, "error while getting folder by owner id");
+  }
+}
+async function getNextExpiringPublicFolder(userId) {
+  try {
+    const folder = await prisma.folders.findFirst({
+      where: {
+        userId: userId,
+        shared: true,
+        link_expiration: {
+          not: null,
+        },
+      },
+      orderBy: {
+        link_expiration: "asc",
+      },
+    });
+    return folder;
+  } catch (e) {
+    console.log(e, "error while getting next expiring public folder");
+  }
+}
 export {
   getUserById,
   getUserByName,
@@ -358,5 +391,7 @@ export {
   getFileById,
   saveSharedFolder,
   unShareFolder,
+  getPublicFolderByOwnerId,
+  getNextExpiringPublicFolder,
   prisma,
 };
