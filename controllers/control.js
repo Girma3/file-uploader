@@ -11,6 +11,7 @@ import {
   unShareFolder,
   getPublicFolderByOwnerId,
   getNextExpiringPublicFolder,
+  deleteFile,
 } from "../db/queries.js";
 import dotenv from "dotenv";
 dotenv.config();
@@ -55,7 +56,20 @@ const validateLogIn = [
     .isLength({ min: 3 }) //adjust later
     .withMessage("password must be at least 3  characters"),
 ];
+function convertSize(bytes) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
 
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return size > 0
+    ? `${size.toFixed(2)} ${units[unitIndex].toLowerCase()}`
+    : "0 b";
+}
 async function handleHomePage(req, res, next) {
   try {
     res.render("home");
@@ -65,27 +79,34 @@ async function handleHomePage(req, res, next) {
     console.log(err);
   }
 }
+
 async function handleUploadPage(req, res, next) {
+  const userId = req.session.user.id;
   try {
-    const allFolders = await getUserAllFolders(req.session.user.id);
-    const allFiles = await getUserIndependentFiles(req.session.user.id);
-    const folderCount = await countFolderFiles(1);
-    const formattedFolder = await formatFolderTimeStamp(allFolders);
-    const { data, error } = await supabase.storage
-      .from("folders")
-      .list("uplod-me", "{ limit: 100, offset: 0 }");
-    // //.getPublicUrl("peakpx.jpg");
-    const userId = req.session.user.id;
+    const allFolders = await getUserAllFolders(userId);
 
-    //console.log(data); // This should include files inside 'uplod-me'
+    const allFiles = await getUserIndependentFiles(userId);
+    const backEndUrl = process.env.BACKEND_URL;
+    if (allFiles) {
+      allFiles.map((file) => {
+        file.timestamp = formatDate(file.createdAt, "MMM dd");
+        file.size = convertSize(file.fileSize);
+        file.proxyUrl = `${backEndUrl}/get/file/image/${file.id}`;
+      });
+    }
+    console.log(allFiles, "all files");
 
-    //const { data, error } = await supabase.storage.from("folders").list("");
+    let formattedFolder = await formatFolderTimeStamp(allFolders);
 
-    // if (error) console.error(error);
-    // console.log(data, "folders n");
+    if (formattedFolder) {
+      for (const folder of formattedFolder) {
+        const folderSize = await getFolderSize(userId, folder.id);
 
-    //if (error) console.error(error);
-    //console.log(data, "files");
+        folder.size = convertSize(folderSize);
+        const folderCount = await countFolderFiles(userId, folder.id);
+        folder.count = folderCount;
+      }
+    }
 
     res.render("upload-page", { folders: formattedFolder, files: allFiles });
   } catch (err) {
@@ -172,7 +193,6 @@ async function handleFolderDetailPage(req, res, next) {
       timestamp: folderCreatedTime,
       files: filesWithPublicUrl, //files array
     };
-    console.log(filesWithPublicUrl[0].proxyUrl);
 
     return res.render("folder-detail", {
       folder: formattedFolder,
@@ -191,6 +211,36 @@ function formatFolderTimeStamp(folders) {
     return formattedFolder;
   });
 }
+async function handleFileImages(req, res) {
+  const fileId = Number(req.params.fileId);
+
+  try {
+    let userId = req.session.user?.id;
+
+    const file = await getFileById(fileId, userId);
+
+    const fileType = file.fileType;
+    if (fileType.includes("image")) {
+      const { data, error } = await supabase.storage
+        .from("files")
+        .createSignedUrl(`${file.fileHashedName}`, 60 * 60 * 24 * 7); // 1 week URL
+
+      if (error) {
+        return res.status(404).json({ error: "file not found in supabase." });
+      }
+
+      if (data) {
+        return res.status(200).json({ imageUrl: data.signedUrl });
+      } else if (file && !fileType.includes(image)) {
+        return res.status(200).json({ msg: "file not  image" });
+      }
+    } else {
+      return res.status(404).json({ error: "file not found" });
+    }
+  } catch (e) {
+    console.log(e, "error in handle folder images");
+  }
+}
 async function handleFolderImages(req, res) {
   const fileId = Number(req.params.fileId);
 
@@ -207,7 +257,7 @@ async function handleFolderImages(req, res) {
     const file = await getFileById(fileId, userId);
     const folder = await getFolderById(userId, file.folderId);
     const fileType = file.fileType;
-    if (fileType.includes) {
+    if (fileType.includes("image")) {
       const { data, error } = await supabase.storage
         .from("folders")
         .createSignedUrl(
@@ -402,6 +452,7 @@ export {
   handleDownLoadFolderFiles,
   handleShareFolder,
   handleDisPlaySharedFolder,
+  handleFileImages,
   validateUser,
   validateLogIn,
 };
