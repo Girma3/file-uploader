@@ -56,6 +56,10 @@ async function handleNewFolder(req, res, next) {
   }
 
   try {
+    const folderExist = await getFolderByName(folderName, userId);
+    if (folderExist) {
+      return res.status(401).json({ msg: "folder already exists." });
+    }
     const folder = await addFolder(folderName, userId);
     if (!folder) {
       return res.status(401).json({ msg: "folder not added." });
@@ -96,26 +100,85 @@ async function handleEditFolderJson(req, res, next) {
     console.log(e, "err while sending json");
   }
 }
-async function handleEditFolderName(req, res, next) {
+async function handleEditFolderName(req, res) {
   const errors = validationResult(req);
-  let folderId = req.params.id;
+  let folderId = Number(req.params.id);
   const userId = req.session.user.id;
-  folderId = Number(folderId);
+
   if (!errors.isEmpty()) {
-    return res.status(401).json({ errors: errors });
+    return res.status(401).json({ errors: errors.array() });
   }
+
   const folderName = req.body.folderName;
 
   try {
-    const folder = await editFolderName(userId, folderId, folderName);
-    if (!folder) {
-      return res.status(401).json({ msg: "folder not edited." });
+    const { name } = await getFolderById(userId, folderId);
+    const folderUpdated = await editFolderName(userId, folderId, folderName);
+    if (!folderUpdated) {
+      return res.status(401).json({ msg: "Folder not edited." });
     }
+
+    const { data: files, error } = await supabase.storage
+      .from("folders")
+      .list(name);
+
+    if (error) {
+      console.error("Error fetching folder files:", error);
+      return res.status(401).json({ msg: "Error retrieving folder contents." });
+    }
+
+    if (!files || files.length === 0) {
+      await handleEmptyFolder(name, folderName);
+    } else {
+      await handleNonEmptyFolder(name, folderName, files);
+    }
+
     return res.status(200).json({ redirect: `/folder/detail/?id=${folderId}` });
   } catch (e) {
-    console.log(e, "err while editing folder name.");
+    console.error("Error while editing folder name:", e);
+    return res.status(500).json({ msg: "Server error while renaming folder." });
   }
 }
+
+async function handleEmptyFolder(oldName, newName) {
+  // Create a placeholder file
+  const { data: file, error: uploadError } = await supabase.storage
+    .from("folders")
+    .upload(`${oldName}/placeholder.txt`, new Blob(["This is a temp file"]), {
+      contentType: "text/plain",
+    });
+
+  if (uploadError) {
+    console.error("Error creating placeholder file:", uploadError);
+    return;
+  }
+
+  // Move placeholder file to the new folder name
+  const { error: moveError } = await supabase.storage
+    .from("folders")
+    .move(`${oldName}/placeholder.txt`, `${newName}/placeholder.txt`);
+
+  if (moveError) {
+    console.error("Error moving placeholder file:", moveError);
+    return;
+  }
+
+  // Delete the placeholder file
+  await supabase.storage.from("folders").remove([`${newName}/placeholder.txt`]);
+}
+
+async function handleNonEmptyFolder(oldName, newName, files) {
+  for (const file of files) {
+    const { error } = await supabase.storage
+      .from("folders")
+      .move(`${oldName}/${file.name}`, `${newName}/${file.name}`);
+
+    if (error) {
+      console.error(`Error moving file ${file.name}:`, error);
+    }
+  }
+}
+
 async function handleAddFolderWithFiles(req, res, next) {
   // Add folder with Files{
   const userId = req.session.user.id;

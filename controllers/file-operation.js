@@ -4,6 +4,7 @@ import {
   deleteFile,
   getFolderById,
   getFileById,
+  getFileByName,
 } from "../db/queries.js";
 import supabase from "../db/supabase.js";
 import path from "path";
@@ -84,11 +85,15 @@ async function handleAddFileToFolder(req, res, next) {
     return res.status(500).json({ msg: "Error while adding file to folder." });
   }
 }
-async function handleAddIndependentFile(req, res, next) {
+async function handleAddIndependentFile(req, res) {
   const userId = req.session.user.id;
   const uploads = [req.file];
 
   try {
+    const fileExist = await getFileByName(uploads[0].originalName, userId);
+    if (fileExist) {
+      return res.status(401).json({ msg: "file already exist." });
+    }
     // Handles both single and array uploads
     const homeDir = path.join(dirname(fileURLToPath(import.meta.url)), "../");
     const uploadDir = path.join(homeDir, "uploads");
@@ -121,7 +126,7 @@ async function handleAddIndependentFile(req, res, next) {
       const filePath = path.join(uploadDir, file.hashedFileName);
       fs.unlinkSync(filePath);
     });
-    const userId = req.session.user.id;
+
     const fileOriginalName = uploads[0].originalname;
     const fileHashedName = uploads[0].hashedFileName;
     const filePathToSupaBase = `files/${fileHashedName}`;
