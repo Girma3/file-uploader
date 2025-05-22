@@ -76,7 +76,7 @@ async function getFolderSize(userId, folderId) {
     });
     if (folder) {
       const folderSize = folder.files.reduce(
-        (total, file) => total + file.size,
+        (total, file) => total + file.fileSize,
         0
       );
       return folderSize;
@@ -285,6 +285,19 @@ async function getFileByHashedName(fileHashedName, userId) {
     console.log(e, "error while getting file by name.");
   }
 }
+async function getFileByName(fileName, userId) {
+  try {
+    const file = await prisma.files.findFirst({
+      where: {
+        fileOriginalName: fileName,
+        userId: userId,
+      },
+    });
+    return file;
+  } catch (e) {
+    console.log(e, "error while getting file by name.");
+  }
+}
 async function getFileById(fileId, userId) {
   try {
     const file = await prisma.files.findUnique({
@@ -388,6 +401,7 @@ export {
   addFileToFolder,
   deleteFile,
   getFileByHashedName,
+  getFileByName,
   getFileById,
   saveSharedFolder,
   unShareFolder,
