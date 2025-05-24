@@ -1,7 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
-  <%-include("./partials/header")%>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/home-page.css" />
+  </head>
   <body>
-    <h1>Home</h1>
+    <header class="flex-row">
+      <h1>Home</h1>
+      <button data-name="log-in-btn">Log In</button>
+    </header>
+    <main>
+      <section class="flex-row hero-holder">
+        <div class="hero-img-holder">
+          <img
+            src="/assets/share-file.jpg"
+            alt="people sharing file from cloud"
+            class="hero-img"
+          />
+          <div class="flying-folder"></div>
+        </div>
+        <div class="flex-column hero-text">
+          <p>simple app to upload folder and files</p>
+          <p class="text">with ease .</p>
+          <button data-name="sign-in-btn">sign Up</button>
+        </div>
+      </section>
+
+      <section class="flex-column">
+        <dialog class="log-in-modal log-in-holder" data-name="log-in-modal">
+          <h1 class="log-in-text">LogIn</h1>
+          <button class="close-btn" data-name="close-btn">close</button>
+          <%- include("./partials/log-in-form.ejs") %>
+        </dialog>
+      </section>
+      <section class="flex-column">
+        <dialog class="sign-in-modal sign-in-holder" data-name="sign-in-modal">
+          <h1 class="log-in-text">SignIn</h1>
+          <button class="close-btn" data-name="close-btn">close</button>
+          <%- include("./partials/sign-in-form.ejs") %>
+        </dialog>
+      </section>
+    </main>
+    <script type="module" src="/scripts/home-page.js"></script>
   </body>
 </html>

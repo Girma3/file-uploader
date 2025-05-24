@@ -1,17 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-  <%-include("./partials/header",{title:"Upload Files"})%>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Upload</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/upload-page.css" />
+  </head>
   <body>
     <header class="flex-row">
       <h1>Upload Page</h1>
       <nav>
         <div class="btn-holder" data-name="upload-btn-holder">
-          <button data-name="new-folder">New Folder</button>
           <button class="active" data-name="upload-folder">
-            upload Folder
+            Upload Folder
           </button>
-          <button data-name="upload-file">upload Files</button>
-          <button>Log out</button>
+          <button data-name="upload-file">Upload Files</button>
+          <button data-name="log-out">Log out</button>
         </div>
       </nav>
     </header>
@@ -22,13 +28,10 @@
         </dialog>
       </section>
       <section>
-        <div draggable="true" id="x">Drag me</div>
         <div
           class="flex-column upload-holder"
           data-name="upload-folder-form-holder"
         >
-          <p>Drag and Drop</p>
-          <span>or</span>
           <%- include("./partials/upload-folder-form.ejs") %>
         </div>
 
@@ -36,37 +39,43 @@
           class="flex-column upload-holder"
           data-name="upload-file-form-holder"
         >
-          <p>Drag and Drop</p>
-          <span>or</span>
           <%- include("./partials/upload-file-form.ejs") %>
         </div>
-        <div id="progress-container" style="width: 100%; background: #ddd">
-          <div
-            id="progress-bar"
-            style="
-              width: 0%;
-              height: 20px;
-              background: #4caf50;
-              text-align: center;
-              color: white;
-            "
-          >
-            0%
-          </div>
+        <div class="progress-bar-holder hidden">
+          <div id="progress-bar" class="progress-bar"></div>
         </div>
       </section>
       <section>
-        <div class="flex-row">
+        <div class="flex-row show-btn-holder" data-name="show-by-holder">
           <p>show By</p>
-          <a class="show-link" href="/show/?showBy='folder">Folders</a>
-          <span data-show="file" data></span>
-          <a class="show-link" href="/show/?showBy='file">Files</a>
+          <button class="show-link active" data-name="show-folders">
+            Folders
+          </button>
+          <span class="slash">/</span>
+          <button class="show-link" data-name="show-files">Files</button>
         </div>
       </section>
-      <section>
-        <% if (folders.length > 0) { %> <% folders.forEach((folder) => { %> <%-
-        include("./partials/upload-folder.ejs", { folder: folder }) %> <% }) %>
-        <% } %>
+      <section class="flex-row uploads">
+        <div>
+          <ul
+            data-name="folder-list-holder"
+            class="flex-column folder-list-holder"
+          >
+            <% if (folders.length > 0) { %> <% folders.forEach((folder) => { %>
+            <%- include("./partials/upload-folder.ejs", { folder: folder }) %>
+            <% }) %> <% } %>
+          </ul>
+        </div>
+        <div>
+          <ul
+            data-name="file-list-holder"
+            class="flex-row file-list-holder hidden"
+          >
+            <% if (files.length > 0) { %> <% files.forEach((file) => { %> <%-
+            include("./partials/upload-item.ejs", { file: file}) %> <% }) %> <%
+            } %>
+          </ul>
+        </div>
       </section>
     </main>
     <script type="module" src="/scripts/upload-page.js"></script>

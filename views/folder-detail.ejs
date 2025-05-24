@@ -5,38 +5,77 @@
   <body>
     <header class="flex-row">
       <h1>Detail Page</h1>
-      <a href="/upload-page">Back</a>
+     
+      <% if (shared === true) { %>
+        <a class="nav-link" href="/">Home</a>
+      <% } else { %>
+        <a class="nav-link" href="/upload-page">Back</a>
+      <% } %>
+      
     </header>
     <main>
       <section>
-        <div class="flex-row folder-header">
-          <div class="flex-row">
-            <h1><%=folder.name%></h1>
-            <p>created at <%=folder.timestamp%></p>
-            <p>files <%=folder.count%></p>
-            <p>size <%=folder.size%></p>
-          </div>
+        <dialog data-name="share-folder-modal" class="share-folder-modal">
+          <button data-name="close-share-modal" class="close-btn">X</button>
+            <%-include("./partials/share-folder-form",{folderId:folder.id})%> 
+        </dialog>
+        <dialog data-name="copy-link-modal" class="copy-link-modal">
+          <button data-name="close-link-modal" class="close-btn">X</button>
+        <%-include("./partials/copy-link")%>
+      </dialog>
+        
+      </section>
+   
+      <section>
+      
+           <div class="flex-row  folder-header">
+            <div class="folder-name-holder">
+    <p class="folder-name detail"><%= folder.name%></p>
+    <div class="flex-row folder-info-holder">
+      <p class="folder-size detail">
+        <span>size: <%=folder.size%></span>
+      </p>
+      <p class="folder-count detail">
+        <span>Files: <%=folder.count%></span>
+      </p>
+      <p class="folder-timestamp detail">
+        <span>created-at: <%=folder.timestamp%></span>
+      </p>
+  </div>  
+  </div>
           <div>
             <label for="addFile" aria-label="add file" style="display: none;"></label>
            <input type="file" id="addFile" name="addFile" data-name="upload-file" data-folder="<%=folder.id%>" style="display:none;">
           </div>
           <div data-name="folder-btn-holder">
-            <button class="edit-folder" data-name="edit-folder" aria-label="edit folder"></button>
-            <button class="add-file" data-name="add-file" aria-label="Add file"></button>
-            <button class="del-folder" data-name="delete-folder" aria-label="delete folder"></button>
-            <button class="share-folder" data-name="share-folder" aria-label="share folder"></button>
+            
+           <% if (shared === false) { %>
+            <button class="edit-folder" data-name="edit-folder" data-folder="<%=folder.id%>" aria-label="edit folder"></button>
+            <button class="add-file" data-name="add-file" data-folder="<%=folder.id%>" aria-label="Add file"></button>
+            <button class="delete-folder" data-name="delete-folder" data-folder="<%=folder.id%>" aria-label="delete folder"></button>
+            <button class="share-folder" data-name="share-folder" data-folder="<%=folder.id%>" aria-label="share folder"></button>
+            <% } %> 
             <button
               class="download-folder"
               data-name="download-folder"
+              data-folder="<%=folder.id%>"
+              data-folder-name = "<%=folder.name%>"
               aria-label="download folder"
             ></button>
           </div>
         </div>
-        <ul>
+        <ul data-name="file-list-holder" class="flex-row file-list-holder">
           <% if (folder.files.length > 0) { %> <% folder.files.forEach((file) =>
           { %> <%- include("./partials/upload-item", { file: file }) %> <% }) %>
           <% } %>
         </ul>
+      </section>
+
+      <section >
+        <dialog data-name="edit-folder-modal" class="edit-folder-modal">
+          <button class="close-btn" data-name="close-btn">X</button>
+          <%- include("./partials/edit-folder"),{folderId:folder.id} %>
+       </dialog>
       </section>
     </main>
   
