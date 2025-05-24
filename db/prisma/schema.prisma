@@ -18,24 +18,30 @@ model User {
 }
 
 model Folders {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  userId    Int
-  files     Files[]
-  user      User     @relation(fields: [userId], references: [id])
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  createdAt       DateTime  @default(now())
+  userId          Int
+  files           Files[]
+  owner_id        String?   @db.Uuid
+  shared          Boolean?  @default(false)
+  share_link      String?
+  link_expiration DateTime?
+  user            User      @relation(fields: [userId], references: [id])
 }
 
 model Files {
-  id        Int      @id @default(autoincrement())
-  name      String
-  size      Int      @default(0)
-  createdAt DateTime @default(now())
-  url       String
-  folderId  Int?
-  userId    Int
-  folder    Folders? @relation(fields: [folderId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  id               Int      @id @default(autoincrement())
+  fileOriginalName String   @default("")
+  fileHashedName   String   @default("")
+  fileType         String   @default("")
+  fileSize         Int      @default(0)
+  createdAt        DateTime @default(now())
+  url              String
+  folderId         Int?
+  userId           Int
+  folder           Folders? @relation(fields: [folderId], references: [id])
+  user             User     @relation(fields: [userId], references: [id])
 }
 
 model Session {
