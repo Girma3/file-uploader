@@ -1,32 +1,22 @@
 import {
-  countFolderFiles,
+  addNewUser,
+  getUserByName,
   getUserAllFolders,
-  getUserIndependentFiles,
   getFolderById,
   getFolderSize,
   getFolderFiles,
-  getFileByHashedName,
-  getFileById,
-  saveSharedFolder,
+  countFolderFiles,
   unShareFolder,
+  getUserIndependentFiles,
   getPublicFolderByOwnerId,
   getNextExpiringPublicFolder,
-  deleteFile,
 } from "../db/queries.js";
 import dotenv from "dotenv";
 dotenv.config();
 import { body, validationResult } from "express-validator";
 import { authenticateUser } from "../middleware/authenticateUser.js";
 import { formatDate } from "date-fns";
-
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-import supabase from "../db/supabase.js";
-import { ResultWithContextImpl } from "express-validator/lib/chain/context-runner-impl.js";
-const __dirname = path.join(dirname(fileURLToPath(import.meta.url)), "../");
-import { v4 as uuidv4 } from "uuid";
+import bcrypt from "bcryptjs";
 
 const validateUser = [
   body("userName")
@@ -73,15 +63,13 @@ function convertSize(bytes) {
 async function handleHomePage(req, res, next) {
   try {
     res.render("home");
-    // const user = await getUserById(1);
-    // console.log(user);
   } catch (err) {
     console.log(err);
   }
 }
 
 async function handleUploadPage(req, res, next) {
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   try {
     const allFolders = await getUserAllFolders(userId);
 
@@ -94,7 +82,6 @@ async function handleUploadPage(req, res, next) {
         file.proxyUrl = `${backEndUrl}/get/file/image/${file.id}`;
       });
     }
-    console.log(allFiles, "all files");
 
     let formattedFolder = await formatFolderTimeStamp(allFolders);
 
@@ -113,17 +100,39 @@ async function handleUploadPage(req, res, next) {
     console.log(err);
   }
 }
-async function handleSignIn(req, res, next) {
+async function handleSignUp(req, res, next) {
   const errors = validationResult(req);
-  console.log(errors, "in sign in");
+
   if (!errors.isEmpty()) {
     return res.status(401).json({ errors: errors });
   }
   const { userName, userPassword } = req.body;
+  console.log(userName, userPassword);
+
   try {
+    const checkUserExist = await getUserByName(userName);
+    if (checkUserExist) {
+      return res.status(401).json({ msg: "user already exist." });
+    }
     //add user to db
-    // await addUser(userName, userPassword);
-    return res.status(200).json({ redirect: "/upload-page" });
+    const hashPassword = await bcrypt.hash(userPassword, 10);
+    if (!hashPassword) {
+      return res.status(401).json({ msg: "Invalid password." });
+    }
+
+    const user = await addNewUser(userName, hashPassword);
+
+    if (!user) {
+      return res.status(401).json({ msg: "user not added." });
+    }
+
+    req.logIn(user, (err) => {
+      if (err) {
+        return res.status(500).json({ msg: "Error logging in after sign-up." });
+      }
+      req.session.user = user;
+      return res.status(200).json({ redirect: "/upload-page" });
+    });
   } catch (err) {
     console.log(err, "err,while sign in");
   }
@@ -156,7 +165,7 @@ async function handleLogIn(req, res, next) {
 
 async function handleFolderDetailPage(req, res, next) {
   let folderId = req.query.id;
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   const backEndUrl = process.env.BACKEND_URL;
 
   if (!folderId || !userId) {
@@ -171,6 +180,7 @@ async function handleFolderDetailPage(req, res, next) {
     }
     const FolderFilesNum = await countFolderFiles(userId, folderId);
     const folderSize = await getFolderSize(userId, folderId);
+    const folderSizeUnit = convertSize(folderSize);
     const folderCreatedTime = formatDate(folder.createdAt, "MMM dd yyyy");
     const folderFiles = await getFolderFiles(userId, folderId);
     //if folder is public add owner id as query
@@ -179,6 +189,7 @@ async function handleFolderDetailPage(req, res, next) {
       if (file.fileType.includes("image")) {
         return {
           ...file,
+          size: convertSize(file.fileSize),
           proxyUrl: ownerId
             ? `${backEndUrl}/get-image/${file.id}?ownerId=${ownerId}`
             : `${backEndUrl}/get-image/${file.id}`,
@@ -189,14 +200,14 @@ async function handleFolderDetailPage(req, res, next) {
     const formattedFolder = {
       ...folder,
       count: FolderFilesNum,
-      size: folderSize,
+      size: folderSizeUnit,
       timestamp: folderCreatedTime,
       files: filesWithPublicUrl, //files array
     };
 
     return res.render("folder-detail", {
       folder: formattedFolder,
-      public: false,
+      shared: false,
     });
   } catch (err) {
     console.log(err);
@@ -211,161 +222,8 @@ function formatFolderTimeStamp(folders) {
     return formattedFolder;
   });
 }
-async function handleFileImages(req, res) {
-  const fileId = Number(req.params.fileId);
 
-  try {
-    let userId = req.session.user?.id;
-
-    const file = await getFileById(fileId, userId);
-
-    const fileType = file.fileType;
-    if (fileType.includes("image")) {
-      const { data, error } = await supabase.storage
-        .from("files")
-        .createSignedUrl(`${file.fileHashedName}`, 60 * 60 * 24 * 7); // 1 week URL
-
-      if (error) {
-        return res.status(404).json({ error: "file not found in supabase." });
-      }
-
-      if (data) {
-        return res.status(200).json({ imageUrl: data.signedUrl });
-      } else if (file && !fileType.includes(image)) {
-        return res.status(200).json({ msg: "file not  image" });
-      }
-    } else {
-      return res.status(404).json({ error: "file not found" });
-    }
-  } catch (e) {
-    console.log(e, "error in handle folder images");
-  }
-}
-async function handleFolderImages(req, res) {
-  const fileId = Number(req.params.fileId);
-
-  try {
-    let userId = req.session.user?.id;
-    //if folder is for public get owner id not session
-    if (userId === undefined) {
-      const folder = await getPublicFolderByOwnerId(req.query.ownerId);
-      if (folder && folder.shared) {
-        userId = folder.userId;
-      }
-    }
-
-    const file = await getFileById(fileId, userId);
-    const folder = await getFolderById(userId, file.folderId);
-    const fileType = file.fileType;
-    if (fileType.includes("image")) {
-      const { data, error } = await supabase.storage
-        .from("folders")
-        .createSignedUrl(
-          `${folder.name}/${file.fileHashedName}`,
-          60 * 60 * 24 * 7
-        ); // 1 week URL
-
-      if (error) {
-        return res.status(404).json({ error: "file not found in supabase." });
-      }
-
-      if (data) {
-        return res.status(200).json({ imageUrl: data.signedUrl });
-      } else if (file && !fileType.includes(image)) {
-        return res.status(200).json({ msg: "file not  image" });
-      }
-    } else {
-      return res.status(404).json({ error: "file not found" });
-    }
-  } catch (e) {
-    console.log(e, "error in handle folder images");
-  }
-}
-//function to handle download file that are found inside folder
-async function handleDownLoadFolderFiles(req, res) {
-  const fileId = Number(req.params.fileId);
-  const folderId = Number(req.query.folderId);
-
-  let userId = req.session.user.id;
-
-  try {
-    if (folder.shared) {
-      userId = folder.userId;
-    }
-    const file = await getFileById(fileId, userId);
-    const folder = await getFolderById(userId, folderId);
-    if (!file) {
-      return res.status(404).json({ error: "file not found." });
-    }
-
-    // const { data, error } = await supabase.storage
-    //   .from("folders")
-    //   .download(`${folder.name}/${file.fileHashedName}`);
-    const { data, error } = await supabase.storage
-      .from("folders")
-      .download(`${folder.name}/${file.fileHashedName}`);
-    if (error) {
-      return res.status(404).json({ error: "file not found in supabase." });
-    }
-    if (data) {
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${file.fileName}"`
-      );
-      res.setHeader("Content-Type", file.fileType);
-      return res.send(Buffer.from(await data.arrayBuffer())); // Convert Blob/Buffer to Buffer and send
-    } else {
-      return res.status(500).json({ error: "Failed to download file." });
-    }
-  } catch (e) {
-    console.log(e, "error while downloading file.");
-  }
-}
-async function handleShareFolder(req, res) {
-  let folderId = req.params.id;
-  folderId = Number(folderId);
-  const userId = req.session.user.id;
-  let linkExpirationTime = Number(req.body.linkDuration) || 60 * 60; // Default to 1 hr if not provided
-  const timestamp = new Date(Date.now() + `${linkExpirationTime}` * 1000);
-  const backEndUrl = process.env.BACKEND_URL;
-
-  try {
-    const folder = await getFolderById(userId, folderId);
-    if (!folder) {
-      return res.status(404).json({ error: "Folder not found." });
-    }
-
-    if (folder.shared) {
-      const prevLinkExpirationTime = folder.link_expiration_time;
-      if (prevLinkExpirationTime < linkExpirationTime) {
-        const ownerId = folder.owner_id;
-
-        const linkUrl = `${backEndUrl}/share/${ownerId}`;
-
-        const folder = await saveSharedFolder(
-          folderId,
-          ownerId,
-          timestamp,
-          linkUrl
-        );
-        return res.status(200).json({ link: folder.share_link });
-      }
-    }
-    const ownerId = uuidv4();
-
-    const linkUrl = `${backEndUrl}/public/folder/${ownerId}`;
-    const sharedFolder = await saveSharedFolder(
-      folderId,
-      ownerId,
-      timestamp,
-      linkUrl
-    );
-    return res.status(200).json({ link: sharedFolder.share_link });
-  } catch (e) {
-    console.error(e, "Error while sharing folder");
-    return res.status(500).json({ error: "Internal server error." });
-  }
-}
+//display shared folder to public
 async function handleDisPlaySharedFolder(req, res) {
   const ownerId = req.params.ownerId;
   try {
@@ -397,7 +255,7 @@ async function handleDisPlaySharedFolder(req, res) {
       }
       return file;
     });
-    console.log(folder);
+
     const formattedFolder = {
       ...folder,
       count: FolderFilesNum,
@@ -405,11 +263,14 @@ async function handleDisPlaySharedFolder(req, res) {
       timestamp: folderCreatedTime,
       files: filesWithPublicUrl, //files array
     };
-
+    const checkUserSigned = req.session.user;
+    const folderPublic = folder.shared;
+    const bothTrue = checkUserSigned && folderPublic;
     return res.render("folder-detail", {
       folder: formattedFolder,
-      //if user signed make public false to show upload page link else home link shown
-      public: req.session.user ? false : true,
+      //if user signed make public false to show upload page link and folder operations
+      //  else home link shown
+      shared: bothTrue ? false : true,
     });
   } catch (e) {
     console.log(e, "error while displaying shared folder");
@@ -422,7 +283,6 @@ async function unShareFolderLinkPeriodically(userId) {
       const expireTime = shareFolder.link_expiration;
       const currentTime = Date.now();
       const delay = new Date(expireTime).getTime() - currentTime;
-      console.log(delay);
 
       if (delay > 0) {
         setTimeout(async () => {
@@ -444,15 +304,11 @@ async function unShareFolderLinkPeriodically(userId) {
 
 export {
   handleHomePage,
-  handleSignIn,
+  handleSignUp,
   handleLogIn,
   handleUploadPage,
   handleFolderDetailPage,
-  handleFolderImages,
-  handleDownLoadFolderFiles,
-  handleShareFolder,
   handleDisPlaySharedFolder,
-  handleFileImages,
   validateUser,
   validateLogIn,
 };
