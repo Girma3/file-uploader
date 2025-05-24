@@ -11,7 +11,6 @@ const logInFormInputs = logInForm.querySelectorAll("input");
 const errLogInSpans = logInForm.querySelectorAll(".err-msg");
 //function that accept spans and msg as an array from backend to show error msg
 function showFormErrMsg(spanArray, msgArray) {
-  // console.log(msgArray);
   // create a map for quick lookup of messages
   const msgMap = new Map(msgArray.map((msg) => [msg.path, msg.msg]));
 
@@ -80,7 +79,7 @@ function togglePassword(input) {
 if (signInForm) {
   signInForm.addEventListener("submit", async function (e) {
     e.preventDefault();
-    console.log(e.target);
+
     const endPoint = "/sign-in";
     const formData = new FormData(signInForm);
     const formJson = JSON.stringify(Object.fromEntries(formData.entries()));
@@ -129,8 +128,6 @@ if (logInForm) {
         body: formJson,
       });
       const result = await response.json();
-      console.log(result);
-
       if (response.status === 200) {
         //reset form
         logInForm.reset();
