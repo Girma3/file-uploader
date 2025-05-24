@@ -1,29 +1,21 @@
+import { getFolderById } from "../db/folder-queries.js";
 import {
   addFileToFolder,
-  addIndependentFile,
-  deleteFile,
-  getFolderById,
   getFileById,
   getFileByName,
-} from "../db/queries.js";
+  addIndependentFile,
+  deleteFile,
+} from "../db/file-queries.js";
+
 import supabase from "../db/supabase.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-const convertSize = (size) => {
-  const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-  let index = 0;
-  while (size >= 1024) {
-    size /= 1024;
-    index++;
-  }
-  return `${size.toFixed(2)} ${units[index]}`;
-};
 
 async function handleAddFileToFolder(req, res, next) {
   let folderId = req.query.id;
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   folderId = Number(folderId);
 
   if (!folderId || !userId) {
@@ -60,7 +52,6 @@ async function handleAddFileToFolder(req, res, next) {
       console.error("Error uploading to Supabase:", uploadError);
       return res.status(500).json({ msg: "Error uploading file to Supabase." });
     }
-    console.log(data, "data");
 
     // Save file to database
     const fileUrlToSupaBase = data.fullPath;
@@ -73,7 +64,7 @@ async function handleAddFileToFolder(req, res, next) {
       folderId,
       userId
     );
-    console.log(file);
+
     //remove local upload
     if (fs.existsSync(uploadDir)) {
       fs.unlinkSync(filePath);
@@ -86,7 +77,7 @@ async function handleAddFileToFolder(req, res, next) {
   }
 }
 async function handleAddIndependentFile(req, res) {
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   const uploads = [req.file];
 
   try {
@@ -153,7 +144,7 @@ async function handleAddIndependentFile(req, res) {
 async function handleDeleteFile(req, res, next) {
   let fileId = req.params.id;
   const folderId = req.query.folderId;
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   fileId = Number(fileId);
 
   try {
@@ -174,7 +165,7 @@ async function handleDeleteFile(req, res, next) {
 }
 async function handleDownloadIndependentFile(req, res) {
   const fileId = Number(req.params.fileId);
-  let userId = req.session.user.id;
+  let userId = req.user.id;
 
   try {
     const file = await getFileById(fileId, userId);
@@ -203,9 +194,40 @@ async function handleDownloadIndependentFile(req, res) {
     console.log(e, "error while downloading file.");
   }
 }
+async function handleFileImages(req, res) {
+  const fileId = Number(req.params.fileId);
+
+  try {
+    let userId = req.user?.id;
+
+    const file = await getFileById(fileId, userId);
+
+    const fileType = file.fileType;
+    if (fileType.includes("image")) {
+      const { data, error } = await supabase.storage
+        .from("files")
+        .createSignedUrl(`${file.fileHashedName}`, 60 * 60 * 24 * 7); // 1 week URL
+
+      if (error) {
+        return res.status(404).json({ error: "file not found in supabase." });
+      }
+
+      if (data) {
+        return res.status(200).json({ imageUrl: data.signedUrl });
+      } else if (file && !fileType.includes(image)) {
+        return res.status(200).json({ msg: "file not  image" });
+      }
+    } else {
+      return res.status(404).json({ error: "file not found" });
+    }
+  } catch (e) {
+    console.log(e, "error in handle folder images");
+  }
+}
 export {
   handleAddFileToFolder,
   handleDeleteFile,
   handleAddIndependentFile,
   handleDownloadIndependentFile,
+  handleFileImages,
 };

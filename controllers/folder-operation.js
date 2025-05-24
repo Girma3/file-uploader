@@ -1,12 +1,18 @@
 import {
+  addFolder,
   getFolderById,
   getFolderByName,
-  addFolder,
+  saveSharedFolder,
+  getPublicFolderByOwnerId,
   editFolderName,
   deleteFolder,
+} from "../db/folder-queries.js";
+import {
   addFileToFolder,
   getFolderFiles,
-} from "../db/queries.js";
+  getFileById,
+} from "../db/file-queries.js";
+
 import supabase from "../db/supabase.js";
 import path from "path";
 import fs from "fs";
@@ -14,13 +20,15 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { body, validationResult } from "express-validator";
 import JSZip from "jszip";
+import { v4 as uuidv4 } from "uuid";
+
 const validateFolderName = [
   body("folderName").trim().notEmpty().withMessage("name can't be empty!"),
 ];
 
 async function handleOpenFolder(req, res, next) {
   let folderId = req.params.id;
-  const userId = req.session.user.id;
+  const userId = req.user.id;
 
   if (!folderId || !userId) {
     return res.status(401).json({ msg: "folder id or user id not found." });
@@ -44,7 +52,7 @@ async function handleNewFolder(req, res, next) {
   if (!errors.isEmpty()) {
     return res.status(401).json({ errors: errors });
   }
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   const folderName = [req.body.files][0].folderName;
   console.log(folderName, "folder name");
 
@@ -74,7 +82,7 @@ async function handleNewFolder(req, res, next) {
 }
 async function handleDeleteFolder(req, res, next) {
   let folderId = req.params.id;
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   folderId = Number(folderId);
 
   try {
@@ -89,7 +97,7 @@ async function handleDeleteFolder(req, res, next) {
 }
 async function handleEditFolderJson(req, res, next) {
   const folderId = req.params.id;
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   try {
     const folder = await getFolderById(userId, folderId);
     if (!folder) {
@@ -103,12 +111,10 @@ async function handleEditFolderJson(req, res, next) {
 async function handleEditFolderName(req, res) {
   const errors = validationResult(req);
   let folderId = Number(req.params.id);
-  const userId = req.session.user.id;
-
+  const userId = req.user.id;
   if (!errors.isEmpty()) {
     return res.status(401).json({ errors: errors.array() });
   }
-
   const folderName = req.body.folderName;
 
   try {
@@ -140,11 +146,11 @@ async function handleEditFolderName(req, res) {
   }
 }
 
-async function handleEmptyFolder(oldName, newName) {
+async function handleEmptyFolder(foldName, newName) {
   // Create a placeholder file
   const { data: file, error: uploadError } = await supabase.storage
     .from("folders")
-    .upload(`${oldName}/placeholder.txt`, new Blob(["This is a temp file"]), {
+    .upload(`${foldName}/placeholder.txt`, new Blob(["This is a temp file"]), {
       contentType: "text/plain",
     });
 
@@ -156,7 +162,7 @@ async function handleEmptyFolder(oldName, newName) {
   // Move placeholder file to the new folder name
   const { error: moveError } = await supabase.storage
     .from("folders")
-    .move(`${oldName}/placeholder.txt`, `${newName}/placeholder.txt`);
+    .move(`${foldName}/placeholder.txt`, `${newName}/placeholder.txt`);
 
   if (moveError) {
     console.error("Error moving placeholder file:", moveError);
@@ -181,10 +187,11 @@ async function handleNonEmptyFolder(oldName, newName, files) {
 
 async function handleAddFolderWithFiles(req, res, next) {
   // Add folder with Files{
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   const uploads = req.files; // Handle multiple files
   //foldername saved from file
   const folderName = uploads[0].folderName;
+  console.log(uploads);
 
   try {
     const homeDir = path.join(dirname(fileURLToPath(import.meta.url)), "../");
@@ -192,7 +199,6 @@ async function handleAddFolderWithFiles(req, res, next) {
     let folder = await getFolderByName(folderName, userId); // Check if folder exists
     if (!folder) {
       folder = await addFolder(folderName, userId); // Add only if it doesn't exist
-      if (!folder) throw new Error("folder not added");
     }
 
     // Upload each file to Supabase
@@ -243,7 +249,6 @@ async function handleAddFolderWithFiles(req, res, next) {
         errors: failedUploads,
       });
     }
-    console.log(results, "results");
 
     // Delete local files after upload
     uploads.forEach((file) => {
@@ -264,7 +269,7 @@ async function handleAddFolderWithFiles(req, res, next) {
 }
 
 async function handleDownloadFolder(req, res) {
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   let folderId = Number(req.params.id);
 
   if (!folderId || !userId) {
@@ -313,50 +318,129 @@ async function handleDownloadFolder(req, res) {
     return res.status(500).json({ error: "Internal server error." });
   }
 }
-
-/*async function handleDownloadFolder(req, res) {
-  const userId = req.session.user.id;
+async function handleShareFolder(req, res) {
   let folderId = req.params.id;
   folderId = Number(folderId);
-  if (!folderId || !userId) {
-    return res.status(401).json({ msg: "folder id or user id not found." });
-  }
+  const userId = req.user.id;
+  let linkExpirationTime = Number(req.body.linkDuration) || 60 * 60; // Default to 1 hr if not provided
+
+  // add user time to the current time
+  const timeStamp = new Date(Date.now() + linkExpirationTime * 1000);
+  const backEndUrl = process.env.BACKEND_URL;
+
   try {
     const folder = await getFolderById(userId, folderId);
-    const folderFiles = await getFolderFiles(userId, folderId);
-    if (!folderFiles) {
-      return res.status(401).json({ msg: "folder files not found." });
-    }
     if (!folder) {
-      return res.status(401).json({ msg: "folder not found." });
+      return res.status(404).json({ error: "Folder not found." });
     }
-    console.log(folderFiles[0]);
-    const downloadFolderFiles = await Promise.all(
-      folderFiles.map(async (file) => {
-        const { data, error } = await supabase.storage
-          .from("folders")
-          .download(`${folder.name}/${file.fileHashedName}`);
-        return error ? null : data;
-      })
-    );
-    console.log(downloadFolderFiles, "download folder files");
 
-    if (downloadFolderFiles === null) {
-      return res.status(404).json({ error: "folder not found in supabase." });
+    if (folder.shared) {
+      const prevLinkExpirationTime = new Date(folder.link_expiration);
+      const effectiveTimeExpiration =
+        prevLinkExpirationTime > timeStamp ? prevLinkExpirationTime : timeStamp;
+
+      const ownerId = folder.owner_id;
+      const linkUrl = `${backEndUrl}/public/folder/${ownerId}`;
+
+      const updatedFolder = await saveSharedFolder(
+        folderId,
+        ownerId,
+        effectiveTimeExpiration,
+        linkUrl
+      );
+      return res.status(200).json({ link: updatedFolder.share_link });
     }
-    if (downloadFolderFiles) {
+    const ownerId = uuidv4();
+
+    const linkUrl = `${backEndUrl}/public/folder/${ownerId}`;
+    const sharedFolder = await saveSharedFolder(
+      folderId,
+      ownerId,
+      timeStamp,
+      linkUrl
+    );
+    return res.status(200).json({ link: sharedFolder.share_link });
+  } catch (e) {
+    console.error(e, "Error while sharing folder");
+    return res.status(500).json({ error: "Internal server error." });
+  }
+}
+async function handleDownLoadFolderFiles(req, res) {
+  const fileId = Number(req.params.fileId);
+  const folderId = Number(req.query.folderId);
+
+  let userId = req.user.id;
+
+  try {
+    if (folder.shared) {
+      userId = folder.userId;
+    }
+    const file = await getFileById(fileId, userId);
+    const folder = await getFolderById(userId, folderId);
+    if (!file) {
+      return res.status(404).json({ error: "file not found." });
+    }
+
+    const { data, error } = await supabase.storage
+      .from("folders")
+      .download(`${folder.name}/${file.fileHashedName}`);
+    if (error) {
+      return res.status(404).json({ error: "file not found in supabase." });
+    }
+    if (data) {
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${folder.name}"`
+        `attachment; filename="${file.fileName}"`
       );
-      res.setHeader("Content-Type", "application/zip");
-      return res.send(Buffer.from(await downloadFolderFiles.arrayBuffer())); // Convert Blob/Buffer to Buffer and send
+      res.setHeader("Content-Type", file.fileType);
+      return res.send(Buffer.from(await data.arrayBuffer())); // Convert Blob/Buffer to Buffer and send
+    } else {
+      return res.status(500).json({ error: "Failed to download file." });
     }
   } catch (e) {
-    console.log(e, "error while downloading folder");
+    console.log(e, "error while downloading file.");
   }
-}*/
+}
+async function handleFolderImages(req, res) {
+  const fileId = Number(req.params.fileId);
 
+  try {
+    let userId = req.user?.id;
+    //if folder is for public get owner id not session
+    if (userId === undefined) {
+      const folder = await getPublicFolderByOwnerId(req.query.ownerId);
+      if (folder && folder.shared) {
+        userId = folder.userId;
+      }
+    }
+
+    const file = await getFileById(fileId, userId);
+    const folder = await getFolderById(userId, file.folderId);
+    const fileType = file.fileType;
+    if (fileType.includes("image")) {
+      const { data, error } = await supabase.storage
+        .from("folders")
+        .createSignedUrl(
+          `${folder.name}/${file.fileHashedName}`,
+          60 * 60 * 24 * 7
+        ); // 1 week URL
+
+      if (error) {
+        return res.status(404).json({ error: "file not found in supabase." });
+      }
+
+      if (data) {
+        return res.status(200).json({ imageUrl: data.signedUrl });
+      } else if (file && !fileType.includes(image)) {
+        return res.status(200).json({ msg: "file not  image" });
+      }
+    } else {
+      return res.status(404).json({ error: "file not found" });
+    }
+  } catch (e) {
+    console.log(e, "error in handle folder images");
+  }
+}
 export {
   handleOpenFolder,
   handleAddFolderWithFiles,
@@ -365,5 +449,8 @@ export {
   handleEditFolderJson,
   handleEditFolderName,
   handleDownloadFolder,
+  handleShareFolder,
+  handleDownLoadFolderFiles,
+  handleFolderImages,
   validateFolderName,
 };

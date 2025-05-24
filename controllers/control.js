@@ -1,16 +1,14 @@
+import { addNewUser, getUserByName } from "../db/user-queries.js";
 import {
-  addNewUser,
-  getUserByName,
   getUserAllFolders,
   getFolderById,
   getFolderSize,
-  getFolderFiles,
   countFolderFiles,
   unShareFolder,
-  getUserIndependentFiles,
   getPublicFolderByOwnerId,
   getNextExpiringPublicFolder,
-} from "../db/queries.js";
+} from "../db/folder-queries.js";
+import { getUserIndependentFiles, getFolderFiles } from "../db/file-queries.js";
 import dotenv from "dotenv";
 dotenv.config();
 import { body, validationResult } from "express-validator";
