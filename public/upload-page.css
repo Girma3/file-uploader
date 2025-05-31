@@ -69,15 +69,16 @@
 }
 .progress-bar-holder {
   position: relative;
-  width: fit-content;
-  max-width: 70%;
-  height: 23px;
+  width: 90%;
+  height: 20px;
   background-color: white;
   padding-block: 0.5rem;
+  margin: auto;
 }
 .progress-bar {
   text-align: center;
   position: absolute;
+  top: 0;
   width: 0%;
   height: 100%;
   background-color: #00ff00;
