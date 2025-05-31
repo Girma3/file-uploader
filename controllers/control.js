@@ -173,6 +173,7 @@ async function handleFolderDetailPage(req, res, next) {
 
   try {
     const folder = await getFolderById(userId, folderId);
+
     if (!folder) {
       return res.status(401).json({ msg: "folder not found." });
     }
@@ -181,6 +182,7 @@ async function handleFolderDetailPage(req, res, next) {
     const folderSizeUnit = convertSize(folderSize);
     const folderCreatedTime = formatDate(folder.createdAt, "MMM dd yyyy");
     const folderFiles = await getFolderFiles(userId, folderId);
+
     //if folder is public add owner id as query
     let ownerId = folder.owner_id;
     const filesWithPublicUrl = folderFiles.map((file) => {
@@ -192,8 +194,19 @@ async function handleFolderDetailPage(req, res, next) {
             ? `${backEndUrl}/get-image/${file.id}?ownerId=${ownerId}`
             : `${backEndUrl}/get-image/${file.id}`,
         };
+      } else if (file.fileType.includes("video")) {
+        return { ...file, size: convertSize(file.fileSize), fileType: "video" };
+      } else if (file.fileType.includes("pdf")) {
+        return { ...file, size: convertSize(file.fileSize), fileType: "pdf" };
+      } else {
+        const typeParts = file.fileType.split("/");
+        const lastType = typeParts[typeParts.length - 1] || "other";
+        return {
+          ...file,
+          size: convertSize(file.fileSize),
+          fileType: lastType,
+        };
       }
-      return file;
     });
     const formattedFolder = {
       ...folder,
