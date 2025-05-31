@@ -175,7 +175,7 @@ if (uploadFolderFormHolder) {
 
         progressBarHolder.classList.remove("hidden");
         progressBar.style.width = `${percentage}%`;
-        progressBar.innerText = `${percentage}%`;
+        progressBar.innerText = `uploading...${percentage}%`;
         progressBar.style.backgroundColor = "green";
       }
     };
@@ -183,6 +183,7 @@ if (uploadFolderFormHolder) {
     xhr.onload = () => {
       if (xhr.status === 200) {
         alert("Upload complete!");
+        window.location.reload();
       } else {
         alert("Upload failed!");
       }
@@ -191,8 +192,9 @@ if (uploadFolderFormHolder) {
     xhr.send(formData);
   }
 
-  uploadFolderForm.addEventListener("submit", async (e) => {
+  uploadFolderForm.addEventListener("submit", (e) => {
     e.preventDefault();
+
     uploadFiles();
     uploadFolderForm.reset();
     progressBarHolder.classList.add("hidden");

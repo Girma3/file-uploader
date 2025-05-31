@@ -24,15 +24,16 @@ folderBtnHolder.addEventListener("click", async (e) => {
     const folderId = e.target.dataset.folder;
     try {
       const endPoint = `/folder/delete/${folderId}`;
-      const response = fetch(endPoint, {
+      const response = await fetch(endPoint, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
       });
       const result = await response.json();
+
       if (response.status === 200) {
-        window.location.href = response.redirect;
+        window.location.href = result.redirect;
       } else {
         alert(result.msg);
       }
@@ -127,10 +128,13 @@ if (fileHolder) {
         });
 
         const result = await response.json();
+
         if (response.status === 200) {
           window.location.href = result.redirect;
         } else {
-          alert(result.msg);
+          alert(
+            result.msg || "error while deleting file refresh and try again."
+          );
         }
       } catch (e) {
         console.log(e, "err while deleting file.");
@@ -152,6 +156,7 @@ if (fileHolder) {
           const blob = await response.blob();
           downloadImage(blob, fileName);
         } else {
+          const result = await response.json();
           alert(result.msg);
         }
       } catch (e) {
@@ -184,7 +189,11 @@ if (editFolderForm) {
       if (response.status === 200) {
         window.location.href = result.redirect;
       } else {
-        alert(result.msg || result.errors[0].msg);
+        alert(
+          result.msg ||
+            result.errors[0].msg ||
+            "error while editing folder refresh and try again."
+        );
       }
     } catch (e) {
       console.log(e, "err while editing form");
@@ -288,9 +297,8 @@ if (shareFolderForm) {
         headers: { "Content-Type": "application/json" },
         body: formJson,
       });
-
+      const result = await response.json();
       if (response.status === 200) {
-        const result = await response.json();
         shareFolderModal.close();
         copyLinkModal.showModal();
 
@@ -306,7 +314,6 @@ if (shareFolderForm) {
         });
         shareFolderModal.close();
       } else {
-        const result = await response.json();
         alert(result.msg);
       }
     } catch (e) {
