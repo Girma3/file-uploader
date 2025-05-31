@@ -1,4 +1,8 @@
-import { getFolderById } from "../db/folder-queries.js";
+import {
+  deleteFolder,
+  getFolderById,
+  countFolderFiles,
+} from "../db/folder-queries.js";
 import {
   addFileToFolder,
   getFileById,
@@ -148,15 +152,43 @@ async function handleDeleteFile(req, res, next) {
   fileId = Number(fileId);
 
   try {
+    const fileToDelete = await getFileById(fileId, userId);
     const file = await deleteFile(userId, fileId);
+    const folder = await getFolderById(userId, fileToDelete.folderId);
+    const filesInFolder = await countFolderFiles(userId, fileToDelete.folderId);
+
+    const { data, error } = await supabase.storage
+      .from("folders")
+      .remove([`${folder.name}/${file.fileHashedName}`]);
+
+    if (error) {
+      console.error("Error deleting file from Supabase:", error);
+      return res
+        .status(500)
+        .json({ msg: "Error deleting file from Supabase." });
+    }
+
     if (!file) {
       return res.status(401).json({ msg: "file not deleted." });
     }
-    if (file && folderId) {
+
+    if (file && filesInFolder > 0) {
       return res
         .status(200)
-        .json({ redirect: `/folder/detail/?id=${folderId}` });
-    } else {
+        .json({ redirect: `/folder/detail/?id=${fileToDelete.folderId}` });
+    } else if (file && filesInFolder === 0) {
+      //remove folder form db and supabase since it's empty
+      const { data: folderData, error: folderError } = await supabase.storage
+        .from("folders")
+        .remove([`${folder.name}`]);
+      const folderDelete = await deleteFolder(userId, folderId);
+      if (folderError || !folderDelete) {
+        console.error("Error deleting folder from Supabase:", folderError);
+        return res
+          .status(500)
+          .json({ msg: "Error deleting folder from Supabase." });
+      }
+
       return res.status(200).json({ redirect: `/upload-page` });
     }
   } catch (e) {
