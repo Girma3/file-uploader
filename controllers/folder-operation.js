@@ -37,7 +37,7 @@ async function handleOpenFolder(req, res, next) {
 
   try {
     const folder = await getFolderById(userId, folderId);
-    console.log(folder, "open");
+
     if (!folder) {
       return res.status(401).json({ msg: "folder not found." });
     }
@@ -71,11 +71,11 @@ async function handleNewFolder(req, res, next) {
     const folder = await addFolder(folderName, userId);
     if (!folder) {
       return res.status(401).json({ msg: "folder not added." });
-    } else {
-      return res
-        .status(200)
-        .json({ redirect: `/folder/detail/?id=${folder.id}` });
     }
+
+    return res
+      .status(200)
+      .json({ redirect: `/folder/detail/?id=${folder.id}` });
   } catch (e) {
     console.log(e, "err while adding new folder.");
   }
@@ -87,9 +87,13 @@ async function handleDeleteFolder(req, res, next) {
 
   try {
     const folder = await deleteFolder(userId, folderId);
-    if (!folder) {
+    const { data, error } = await supabase.storage
+      .from("folders")
+      .remove([`folders/${folder.name}`]);
+    if (!folder || error) {
       return res.status(401).json({ msg: "folder not deleted." });
     }
+
     return res.status(200).json({ redirect: `/upload-page` });
   } catch (e) {
     console.log(e, "err while deleting folder");
@@ -191,7 +195,6 @@ async function handleAddFolderWithFiles(req, res, next) {
   const uploads = req.files; // Handle multiple files
   //foldername saved from file
   const folderName = uploads[0].folderName;
-  console.log(uploads);
 
   try {
     const homeDir = path.join(dirname(fileURLToPath(import.meta.url)), "../");
@@ -255,8 +258,8 @@ async function handleAddFolderWithFiles(req, res, next) {
       const filePath = path.join(uploadDir, file.hashedFileName);
       fs.unlinkSync(filePath);
     });
-    //delete uploaded folder from local  uploads folder
-    fs.rmdirSync(uploadDir, { recursive: true });
+    //delete uploaded folder from local uploads folder
+    fs.rmSync(uploadDir, { recursive: true, force: true });
 
     res.status(200).json({
       message: `Files uploaded successfully from folder: ${folderName}!`,
@@ -372,11 +375,11 @@ async function handleDownLoadFolderFiles(req, res) {
   let userId = req.user.id;
 
   try {
+    const folder = await getFolderById(userId, folderId);
+    const file = await getFileById(fileId, userId);
     if (folder.shared) {
       userId = folder.userId;
     }
-    const file = await getFileById(fileId, userId);
-    const folder = await getFolderById(userId, folderId);
     if (!file) {
       return res.status(404).json({ error: "file not found." });
     }
