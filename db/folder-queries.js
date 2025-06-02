@@ -125,6 +125,22 @@ async function editFolderName(userId, folderId, folderName) {
     console.log(e, "err while editing folder");
   }
 }
+async function editFolderFilesUrl(userId, folderId, newUrl) {
+  try {
+    const files = await prisma.files.updateMany({
+      where: {
+        userId: userId,
+        folderId: folderId,
+      },
+      data: {
+        url: newUrl,
+      },
+    });
+    return files;
+  } catch (e) {
+    console.log(e, "err while editing folder files url");
+  }
+}
 async function deleteFolder(userId, folderId) {
   try {
     // delete all files in the folder first
@@ -230,6 +246,7 @@ export {
   getFolderSize,
   countFolderFiles,
   editFolderName,
+  editFolderFilesUrl,
   deleteFolder,
   saveSharedFolder,
   getNextExpiringPublicFolder,

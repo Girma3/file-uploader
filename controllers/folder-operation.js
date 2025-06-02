@@ -6,6 +6,7 @@ import {
   getPublicFolderByOwnerId,
   editFolderName,
   deleteFolder,
+  editFolderFilesUrl,
 } from "../db/folder-queries.js";
 import {
   addFileToFolder,
@@ -140,7 +141,19 @@ async function handleEditFolderName(req, res) {
     if (!files || files.length === 0) {
       await handleEmptyFolder(name, folderName);
     } else {
-      await handleNonEmptyFolder(name, folderName, files);
+      const edit = await handleNonEmptyFolder(name, folderName, files);
+      const folderFiles = await getFolderFiles(userId, folderId);
+      const baseUrl = `folders/${folderName}`;
+      if (edit && folderFiles.length > 0) {
+        for (const file of folderFiles) {
+          //update file url that used  to get it from supabase
+          await editFolderFilesUrl(
+            userId,
+            file.folderId,
+            `${baseUrl}/${file.fileHashedName}`
+          );
+        }
+      }
     }
 
     return res.status(200).json({ redirect: `/folder/detail/?id=${folderId}` });
@@ -187,6 +200,8 @@ async function handleNonEmptyFolder(oldName, newName, files) {
       console.error(`Error moving file ${file.name}:`, error);
     }
   }
+  await supabase.storage.from("folders").remove([oldName]);
+  return true;
 }
 
 async function handleAddFolderWithFiles(req, res, next) {
