@@ -1,0 +1,16 @@
+<form
+  data-name="share-folder-form"
+  data-folder="<%= typeof folderId !== 'undefined' ? folderId : '' %>"
+  class="flex-column"
+>
+
+  <div class="flex-column" data-name="options-holder">
+    <label for="linkDuration">Choose link Expiration</label>
+    <select name="linkDuration" id="linkDuration" data-name="linkDuration">
+      <option value="3600">1 Hour</option>
+      <option value="86400">1 Day</option>
+      <option value="604800">1 Week</option>
+    </select>
+  </div>
+  <button type="submit" data-name="get-link">Get Link</button>
+</form>

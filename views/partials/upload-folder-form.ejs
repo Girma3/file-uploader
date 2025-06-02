@@ -1,0 +1,18 @@
+<form
+  action="/upload/folder"
+  method="post"
+  class="flex-column"
+  data-name="upload-folder-form"
+  enctype="multipart/form-data"
+>
+  <label for="uploadFolder" aria-label="upload folder"></label>
+  <input
+    type="file"
+    name="uploadFolder"
+    id="uploadFolder"
+    class="custom-input"
+    webkitdirectory
+    multiple
+  />
+  <button type="submit" data-name="upload-btn">Upload Folder</button>
+</form>

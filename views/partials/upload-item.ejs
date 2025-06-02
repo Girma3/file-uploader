@@ -1,0 +1,43 @@
+<li class="upload-item-holder" data-name="file-holder">
+  <div class="flex-column">
+    <% let name = file.fileOriginalName; let displayName = ""; let stringArr =
+    [...name]; if (stringArr.length > 20) { displayName = stringArr.slice(0,
+    20).join('') + '...' } else { displayName = name; } %>
+    <p class="item-name" title="<%=file.fileOriginalName%>"><%=displayName%></p>
+    <%if(file.proxyUrl){%>
+    <div class="image-holder" data-name="img-holder"></div>
+    <div data-name="proxy-url-holder" data-proxy-url="<%=file.proxyUrl%>"></div>
+
+    <%}else {%>
+    <div class="item-preview-name"><%=file.fileType%></div>
+
+    <%}%>
+    <p class="file-size">size: <%=file.size%></p>
+  </div>
+  <div class="duration-form-holder"></div>
+  <div class="flex-row btn-holder">
+    <button
+      class="download-btn"
+      data-filename="<%=file.fileOriginalName%>"
+      data-name="file-download"
+      data-file="<%=file.id%>"
+      data-folder="<%=file.folderId%>"
+      aria-label="download file"
+    ></button>
+    <!-- <button
+      class="share-btn"
+      data-filename="<%=file.fileOriginalName%>"
+      data-name="share-file"
+      data-file="<%=file.id%>"
+      data-folder="<%=file.folderId%>"
+      aria-label="share file"
+    ></button> -->
+    <button
+      class="del-btn"
+      data-name="file-delete"
+      data-file="<%=file.id%>"
+      data-folder="<%=file.folderId%>"
+      aria-label="delete file"
+    ></button>
+  </div>
+</li>

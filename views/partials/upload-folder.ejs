@@ -1,0 +1,22 @@
+<li class="flex-row folder-card" data-name="folder-holder">
+  <div class="flex-row icon-holder">
+    <img src="/assets/black-folder.png" alt="folder" class="folder-img" />
+  </div>
+  <div class="flex-column folder-name-holder">
+    <p class="folder-name"><%= folder.name%></p>
+    <div class="flex-row folder-info-holder">
+      <p class="folder-size">
+        <span>size: <%=folder.size%></span>
+      </p>
+      <p class="folder-count">
+        <span>Files: <%=folder.count%></span>
+      </p>
+      <p class="folder-timestamp">
+        <span>created-at: <%=folder.timestamp%></span>
+      </p>
+    </div>
+  </div>
+  <button class="open-btn" data-id="<%=folder.id%>" data-name="folder-open">
+    open
+  </button>
+</li>

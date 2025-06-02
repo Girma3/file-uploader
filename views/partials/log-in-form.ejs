@@ -1,0 +1,40 @@
+<form
+  action="/log-in"
+  method="post"
+  class="flex-column"
+  data-name="log-in-form"
+  autocomplete="on"
+>
+  <div class="flex-column input-holder">
+    <input
+      type="text"
+      name="logInUserName"
+      id="logInUserName"
+      required
+      autocomplete="on"
+    />
+    <label for="logInUserName">User Name</label>
+  </div>
+  <div class="flex-column err-msg-holder">
+    <span class="err-msg" data-field="logInUserName"></span>
+    <span class="err-msg" data-field="logInUserName"></span>
+  </div>
+  <div class="flex-column input-holder">
+    <input
+      type="password"
+      name="logInUserPassword"
+      id="logInUserPassword"
+      required
+      autocomplete="on"
+    />
+    <label for="logInUserPassword">password</label>
+    <button class="show-btn" aria-label="show password"></button>
+  </div>
+  <div class="flex-column err-msg-holder">
+    <span class="err-msg" data-field="logInUserPassword"></span>
+    <span class="err-msg" data-field="logInUserPassword"></span>
+  </div>
+  <button type="submit" class="log-in-btn" data-name="log-in-btn">
+    Submit
+  </button>
+</form>

@@ -1,0 +1,41 @@
+<form
+  action="/sign-in"
+  method="post"
+  class="flex-column sign-in-form"
+  data-name="sign-in-form"
+  autocomplete="on"
+>
+  <div class="input-holder">
+    <input
+      type="text"
+      id="userName"
+      name="userName"
+      required
+      autocomplete="on"
+    />
+    <label for="userName">Username</label>
+  </div>
+  <div class="flex-column err-msg-holder">
+    <span class="err-msg" data-field="userName"></span>
+    <span class="err-msg" data-field="userName"></span>
+  </div>
+
+  <div class="input-holder">
+    <input
+      type="password"
+      name="userPassword"
+      id="userPassword"
+      required
+      autocomplete="on"
+    />
+    <label for="userPassword">password</label>
+    <button class="show-btn" aria-label="show password"></button>
+  </div>
+  <div class="flex-column err-msg-holder">
+    <span class="err-msg" data-field="userPassword"></span>
+    <span class="err-msg" data-field="userPassword"></span>
+  </div>
+  <button type="submit" class="sign-in-btn" data-name="sign-in-btn">
+    Submit
+  </button>
+</form>
