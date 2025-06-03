@@ -1,7 +1,6 @@
 import pkg from "@prisma/client";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const { PrismaClient } = pkg;
@@ -31,9 +30,9 @@ async function main() {
     // Create a folder associated with the user
     const folder = await prisma.folders.create({
       data: {
-        name: "folder1",
+        name: "upload-me",
         user: {
-          connect: { id: user.id }, // Use the created user's ID
+          connect: { id: user.id },
         },
       },
     });
@@ -42,17 +41,26 @@ async function main() {
     await prisma.files.createMany({
       data: [
         {
-          name: "file1.txt",
-          size: 300,
-          url: "/file1.txt",
-          userId: user.id, // Associate this file with the user
+          fileOriginalName: "OIP.jpeg",
+          fileHashedName:
+            "f0f0f46c6bd135c51ec55c626e80d64e134fc1996d3ee2c6336a55a420de1909.jpeg",
+          fileType: "image/jpeg",
+          fileSize: 22874,
+          createdAt: new Date(),
+          url: "folders/upload-me/f0f0f46c6bd135c51ec55c626e80d64e134fc1996d3ee2c6336a55a420de1909.jpeg",
+          folderId: folder.id,
+          userId: user.id,
         },
         {
-          name: "file2.txt",
-          size: 400,
-          url: "/file2.txt",
-          folderId: folder.id, // Associate this file with the folder
-          userId: user.id, // Associate this file with the user
+          fileOriginalName: "Pinterest_Download (20).jpg",
+          fileHashedName:
+            "eeb40e22460168d8a4945c07a66e8ad46db6a516871a695d80acd8d77484e8f7.jpg",
+          fileType: "image/jpeg",
+          fileSize: 64711,
+          createdAt: new Date(),
+          url: "folders/upload-me/eeb40e22460168d8a4945c07a66e8ad46db6a516871a695d80acd8d77484e8f7.jpg",
+          folderId: folder.id,
+          userId: user.id,
         },
       ],
     });
