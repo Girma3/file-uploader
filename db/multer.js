@@ -6,8 +6,6 @@ import { dirname } from "path";
 import crypto from "crypto";
 
 const uploaderDir = path.join(dirname(fileURLToPath(import.meta.url)), "../");
-const uploadFiles = path.join(uploaderDir, "files");
-const uploadFolders = path.join(uploaderDir, "folders");
 
 const uploadDir = path.join(uploaderDir, "uploads");
 if (!fs.existsSync(uploadDir)) {
