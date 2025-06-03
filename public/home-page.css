@@ -1,0 +1,77 @@
+/* hero */
+.hero-holder {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hero-img-holder {
+  position: relative;
+}
+.hero-img {
+  width: 90%;
+  min-width: 200px;
+  max-width: 800px;
+  height: 400px;
+}
+.flying-folder {
+  position: absolute;
+  top: calc(50% - 100px); /*center the folder vertically */
+  left: calc(40% - 80px); /* center the folder horizontally */
+  width: 30px;
+  height: 30px;
+  background-color: inherit;
+  background-image: url(./assets/pink-folder.png);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  animation: flying 10s ease-in-out infinite normal;
+}
+@keyframes flying {
+  0% {
+    transform: translate(-130px, 100px);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(0px, -10px);
+    opacity: 0;
+  }
+  75% {
+    transform: translate(100px, 60px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(220px, 120px);
+    opacity: 0;
+  }
+}
+.hero-text {
+  gap: 1rem;
+}
+.text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: yellow;
+  overflow: hidden; /* Ensures the animation stays within bounds */
+  white-space: nowrap; /* Prevents text wrapping */
+  border-right: 2px solid #333; /* Creates the typing cursor effect */
+  animation: typing 5s steps(15, end) 0s normal 1,
+    typing 5s steps(15, end) 5s normal 1,
+    typing 5s steps(15, end) 10s normal forwards;
+  opacity: 0;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+    opacity: 1;
+  }
+  to {
+    width: 7em;
+    opacity: 1;
+  }
+}
+@media screen and (min-width: 600px) {
+  .hero-holder {
+    justify-content: space-around;
+  }
+}

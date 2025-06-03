@@ -210,10 +210,9 @@ input[type="file"]::file-selector-button {
 }
 .upload-item-holder {
   padding: 0.4rem;
-
   width: 230px;
   gap: 0.5rem;
-  height: fit-content;
+  height: 260px;
   background-color: white;
   background-image: linear-gradient(
     to bottom,
