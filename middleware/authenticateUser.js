@@ -16,7 +16,6 @@ function authenticateUser(req, res, next) {
         console.error("Error during login:", err);
         return res.status(401).json({ message: "User not authenticated" });
       }
-      //set session to the current user
       req.session.user = user;
       next();
     });
@@ -27,7 +26,7 @@ function ensureUserAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     return next();
   }
-  return res.status(401).json({ message: "unauthorized user" });
+  return res.status(401).json({ msg: "unauthorized user" });
 }
 
 export { ensureUserAuthenticated, authenticateUser };
